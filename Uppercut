@@ -1,0 +1,169 @@
+-- Cobalt Uppercut UI
+-- Uppercut image + separate fixed lock button
+-- Lock prevents dragging ONLY
+-- Uppercut still works while locked
+-- No RenderStepped
+local CoreGui = game:GetService("CoreGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local GUI_NAME = "CobaltCustomUppercutButton"
+--------------------------------------------------
+-- Remove old UI
+--------------------------------------------------
+local oldGui = CoreGui:FindFirstChild(GUI_NAME)
+if oldGui then
+    oldGui:Destroy()
+end
+--------------------------------------------------
+-- ScreenGui
+--------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = GUI_NAME
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = CoreGui
+--------------------------------------------------
+-- Uppercut Button
+--------------------------------------------------
+local Button = Instance.new("ImageButton")
+Button.Name = "UppercutButton"
+Button.Size = UDim2.fromOffset(78, 78)
+Button.Position = UDim2.new(0.78, 0, 0.68, 0)
+Button.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+Button.BorderSizePixel = 0
+Button.AutoButtonColor = false
+Button.Image = "rbxassetid://9556479888"
+Button.ImageColor3 = Color3.fromRGB(255, 255, 255)
+Button.ScaleType = Enum.ScaleType.Fit
+Button.Active = true
+Button.Parent = ScreenGui
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(1, 0)
+ButtonCorner.Parent = Button
+local ButtonStroke = Instance.new("UIStroke")
+ButtonStroke.Color = Color3.fromRGB(255, 170, 0)
+ButtonStroke.Thickness = 3
+ButtonStroke.Parent = Button
+--------------------------------------------------
+-- Separate Fixed Lock Button
+--------------------------------------------------
+local LockButton = Instance.new("ImageButton")
+LockButton.Name = "LockButton"
+-- Fixed top-right position
+LockButton.AnchorPoint = Vector2.new(1, 0)
+LockButton.Position = UDim2.new(1, -18, 0, 18)
+-- Smaller lock button
+LockButton.Size = UDim2.fromOffset(34, 34)
+LockButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+LockButton.BorderSizePixel = 0
+LockButton.AutoButtonColor = false
+-- New lock image
+LockButton.Image = "rbxassetid://9404349594"
+LockButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+LockButton.ScaleType = Enum.ScaleType.Fit
+LockButton.Active = true
+LockButton.Visible = true
+LockButton.Parent = ScreenGui
+local LockCorner = Instance.new("UICorner")
+LockCorner.CornerRadius = UDim.new(0, 8)
+LockCorner.Parent = LockButton
+local LockStroke = Instance.new("UIStroke")
+LockStroke.Color = Color3.fromRGB(0, 255, 140)
+LockStroke.Thickness = 2
+LockStroke.Parent = LockButton
+--------------------------------------------------
+-- Lock State
+--------------------------------------------------
+local isLocked = false
+local function updateLock()
+    if isLocked then
+        LockButton.BackgroundColor3 = Color3.fromRGB(65, 30, 30)
+        LockStroke.Color = Color3.fromRGB(255, 70, 70)
+        ButtonStroke.Color = Color3.fromRGB(120, 40, 40)
+    else
+        LockButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        LockStroke.Color = Color3.fromRGB(0, 255, 140)
+        ButtonStroke.Color = Color3.fromRGB(255, 170, 0)
+    end
+end
+LockButton.Activated:Connect(function()
+    isLocked = not isLocked
+    updateLock()
+end)
+--------------------------------------------------
+-- Lightweight Dragging
+--------------------------------------------------
+local dragging = false
+local dragStart = nil
+local startPos = nil
+local dragMoved = false
+local DRAG_THRESHOLD = 8
+Button.InputBegan:Connect(function(input)
+    if isLocked then
+        return
+    end
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragMoved = false
+        dragStart = input.Position
+        startPos = Button.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if not dragging then
+        return
+    end
+    if isLocked then
+        dragging = false
+        return
+    end
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+        local delta = input.Position - dragStart
+        if math.abs(delta.X) > DRAG_THRESHOLD
+            or math.abs(delta.Y) > DRAG_THRESHOLD then
+            dragMoved = true
+        end
+        Button.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+--------------------------------------------------
+-- Uppercut Remote
+--------------------------------------------------
+local Event = ReplicatedStorage
+    :WaitForChild("Knit")
+    :WaitForChild("Knit")
+    :WaitForChild("Services")
+    :WaitForChild("HanamiService")
+    :WaitForChild("RE")
+    :WaitForChild("Activated")
+--------------------------------------------------
+-- Uppercut Activation
+--------------------------------------------------
+-- Locking does NOT disable the attack.
+-- It only prevents the button from being dragged.
+Button.Activated:Connect(function()
+    if dragMoved then
+        dragMoved = false
+        return
+    end
+    pcall(function()
+        Event:FireServer("Up", nil)
+    end)
+end)
+--------------------------------------------------
+-- Initial State
+--------------------------------------------------
+updateLock()
